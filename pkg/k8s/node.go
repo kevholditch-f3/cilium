@@ -1,4 +1,4 @@
-// Copyright 2016-2020 Authors of Cilium
+// Copyright 2016-2021 Authors of Cilium
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,13 +24,13 @@ import (
 	"github.com/cilium/cilium/pkg/annotation"
 	"github.com/cilium/cilium/pkg/cidr"
 	"github.com/cilium/cilium/pkg/controller"
+	ciliumio "github.com/cilium/cilium/pkg/k8s/apis/cilium.io"
 	slim_corev1 "github.com/cilium/cilium/pkg/k8s/slim/k8s/api/core/v1"
 	"github.com/cilium/cilium/pkg/logging/logfields"
 	"github.com/cilium/cilium/pkg/node/addressing"
 	nodeTypes "github.com/cilium/cilium/pkg/node/types"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/source"
-
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -237,6 +237,30 @@ func setNodeNetworkUnavailableFalse(c kubernetes.Interface, nodeName string) err
 	return err
 }
 
+// removeNodeTaint removes the AgentNotReadyNodeTaint from nodes' taints which
+// prevents pods from being scheduled until Cilium is setup. Mostly used in
+// cloud providers to prevent existing CNI plugins from managing pods.
+func removeNodeTaint(c kubernetes.Interface, nodeName string) error {
+	k8sNode, err := GetNode(c, nodeName)
+	if err != nil {
+		return err
+	}
+	i := 0
+	for _, taint := range k8sNode.Spec.Taints {
+		if taint.Key != ciliumio.AgentNotReadyNodeTaint {
+			k8sNode.Spec.Taints[i] = taint
+			i++
+		}
+	}
+	// No cilium taints found
+	if i == 0 {
+		return nil
+	}
+	k8sNode.Spec.Taints = k8sNode.Spec.Taints[:i]
+	_, err = c.CoreV1().Nodes().Update(context.TODO(), k8sNode, metav1.UpdateOptions{})
+	return err
+}
+
 // MarkNodeReady marks the Kubernetes node resource as ready from a networking
 // perspective
 func (k8sCli K8sClient) MarkNodeReady(nodeName string) {
@@ -245,6 +269,10 @@ func (k8sCli K8sClient) MarkNodeReady(nodeName string) {
 	controller.NewManager().UpdateController("mark-k8s-node-as-available",
 		controller.ControllerParams{
 			DoFunc: func(_ context.Context) error {
+				err := removeNodeTaint(k8sCli, nodeName)
+				if err != nil {
+					return err
+				}
 				return setNodeNetworkUnavailableFalse(k8sCli, nodeName)
 			},
 		})
