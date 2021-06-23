@@ -2,17 +2,16 @@ name: ConformanceAKS (ci-aks)
 
 # Any change in triggers needs to be reflected in the concurrency group.
 on:
-  issue_comment:
-    types:
-      - created
   # Run every 6 hours
   schedule:
     - cron:  '0 0/6 * * *'
-  ### FOR TESTING PURPOSES
-  # pull_request:
-  #  types:
-  #    - "labeled"
-  ###
+  ## FOR TESTING PURPOSES
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+  ##
 
 concurrency:
   # In case of PR comment, we can't simply append the comment to the group name
@@ -32,13 +31,6 @@ env:
 jobs:
   check_changes:
     name: Deduce required tests from code changes
-    if: |
-      (github.event.issue.pull_request && (
-        startsWith(github.event.comment.body, 'ci-aks') ||
-        (startsWith(github.event.comment.body, 'test-me-please'))
-      )) ||
-      (github.event_name == 'schedule' && github.repository == 'cilium/cilium') ||
-      github.event.label.name == 'ci-run/aks'
     runs-on: ubuntu-latest
     outputs:
       tested: ${{ steps.tested-tree.outputs.src }}
@@ -72,13 +64,6 @@ jobs:
   # modified files were under test/ or Documentation/.
   installation-and-connectivity:
     needs: check_changes
-    if: |
-      (github.event.issue.pull_request && (
-        startsWith(github.event.comment.body, 'ci-aks') ||
-        (startsWith(github.event.comment.body, 'test-me-please') && (needs.check_changes.outputs.tested == 'true'))
-      )) ||
-      (github.event_name == 'schedule' && github.repository == 'cilium/cilium') ||
-      github.event.label.name == 'ci-run/aks'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
