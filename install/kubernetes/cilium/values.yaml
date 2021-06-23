@@ -228,10 +228,6 @@ bgp:
 bpf:
   clockProbe: false
 
-  # -- Force the cilium-agent DaemonSet to wait in an initContainer until the
-  # eBPF filesystem has been mounted.
-  waitForMount: false
-
   # -- Enables pre-allocation of eBPF map values. This increases
   # memory usage but can reduce latency.
   preallocateMaps: false
