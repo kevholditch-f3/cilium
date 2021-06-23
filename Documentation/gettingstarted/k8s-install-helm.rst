@@ -232,8 +232,6 @@ Install Cilium
           helm install cilium |CHART_RELEASE| \\
              --namespace $CILIUM_NAMESPACE
 
-.. include:: k8s-install-restart-pods.rst
-
 .. include:: k8s-install-validate.rst
 
 .. include:: next-steps.rst
