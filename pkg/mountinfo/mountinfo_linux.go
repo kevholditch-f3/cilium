@@ -16,6 +16,7 @@ package mountinfo
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -42,17 +43,21 @@ func IsMountFS(mntType int64, path string) (bool, bool, error) {
 	if err != nil {
 		if errors.Is(err, unix.ENOENT) {
 			// non-existent path can't be a mount point
+			fmt.Printf("AANM No existent mount point: %s\n", path)
 			return false, false, nil
 		}
+		fmt.Printf("AANM lstat %s error: %s\n", path, err)
 		return false, false, &os.PathError{Op: "lstat", Path: path, Err: err}
 	}
 
 	parent := filepath.Dir(path)
 	err = unix.Lstat(parent, &pst)
 	if err != nil {
+		fmt.Printf("AANM lstat %s error: %s\n", path, err)
 		return false, false, &os.PathError{Op: "lstat", Path: parent, Err: err}
 	}
 	if st.Dev == pst.Dev {
+		fmt.Printf("AANM parent has the same dev -- not a mount point st.Dev(%d) == pst.Dev(%d)\n", st.Dev, pst.Dev)
 		// parent has the same dev -- not a mount point
 		return false, false, nil
 	}

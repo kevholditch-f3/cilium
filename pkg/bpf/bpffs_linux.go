@@ -221,6 +221,7 @@ func checkOrMountDefaultLocations(printWarning bool) error {
 	// If /sys/fs/bpf is not mounted at all, we should mount
 	// BPFFS there.
 	if !mounted {
+		log.Warning("POSSIBLE BUG: AANM, mounting")
 		if err := mountFS(printWarning); err != nil {
 			return err
 		}
